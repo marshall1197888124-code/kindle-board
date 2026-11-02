@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kindle 日历天气 - 三个方案</title>
+<style>
+body{margin:0; padding:16px; font-family:serif, sans-serif; color:#000; background:#fff;}
+.switcher{font-size:16px; margin-bottom:16px; padding-bottom:12px; border-bottom:1px solid #999;}
+.switcher button{font-size:16px; padding:6px 10px; margin-right:6px; background:#fff; border:1px solid #000;}
+.switcher button.on{background:#000; color:#fff;}
+h1{margin:0;}
+.sub{margin:4px 0 16px 0;}
+table{width:100%; border-collapse:collapse; text-align:center;}
+/* ---- A: Apple ---- */
+body.theme-apple{background:#f5f5f7; font-family:-apple-system, "PingFang SC", "Helvetica Neue", Arial, sans-serif;}
+.theme-apple .card{background:#fff; border-radius:20px; padding:20px; margin-bottom:14px;}
+.theme-apple h1{font-size:52px; font-weight:700; letter-spacing:-1px;}
+.theme-apple .sub{font-size:20px; color:#86868b;}
+.theme-apple .temp{font-size:64px; font-weight:300; text-align:right;}
+.theme-apple .temp small{font-size:20px; color:#86868b; font-weight:400;}
+.theme-apple table th{font-size:16px; color:#86868b; padding:6px;}
+.theme-apple table td{font-size:20px; padding:10px 2px;}
+.theme-apple td.today{background:#ff3b30; color:#fff; border-radius:50%;}
+.theme-apple .day{font-size:19px; line-height:1.5;}
+/* ---- B: 看板风（截图那种） ---- */
+body.theme-board{background:#fff; font-family:"PingFang SC", Arial, sans-serif;}
+.theme-board .card{border-top:2px solid #000; padding:16px 0; margin-bottom:8px;}
+.theme-board h1{font-size:56px; font-weight:900;}
+.theme-board .sub{font-size:20px;}
+.theme-board .temp{font-size:68px; font-weight:900; text-align:right; line-height:1;}
+.theme-board .temp small{font-size:20px; font-weight:400;}
+.theme-board table th{font-size:18px; padding:8px; border-bottom:2px solid #000;}
+.theme-board table td{font-size:22px; padding:10px 2px; border-bottom:1px solid #ddd;}
+.theme-board td.today{background:#000; color:#fff; font-weight:900;}
+.theme-board .day{font-size:21px; line-height:1.6; border-top:1px solid #000; padding:10px 0;}
+/* ---- C: 极简 ---- */
+body.theme-minimal{background:#faf8f5; font-family:Georgia, "Songti SC", serif; color:#222;}
+.theme-minimal .card{padding:18px 0; border-top:1px solid #ccc; margin-bottom:8px;}
+.theme-minimal h1{font-size:46px; font-weight:400;}
+.theme-minimal .sub{font-size:18px; color:#888; letter-spacing:2px;}
+.theme-minimal .temp{font-size:56px; font-weight:400; text-align:right;}
+.theme-minimal .temp small{font-size:18px; color:#888;}
+.theme-minimal table th{font-size:15px; color:#999; padding:8px;}
+.theme-minimal table td{font-size:20px; padding:10px 2px;}
+.theme-minimal td.today{border:2px solid #000; border-radius:50%;}
+.theme-minimal .day{font-size:20px; line-height:1.6; color:#444;}
+.note{font-size:16px; line-height:1.5; color:#666;}
+input{font-size:19px; padding:8px; width:55%;}
+button{font-size:19px; padding:8px 12px; background:#fff; border:1px solid #000;}
+</style>
+</head>
+<body class="theme-board">
+<div class="switcher">
+方案：
+<button id="btn-apple" onclick="setTheme('apple')">A 苹果风</button>
+<button id="btn-board" onclick="setTheme('board')">B 看板风</button>
+<button id="btn-minimal" onclick="setTheme('minimal')">C 极简风</button>
+<span>（在电脑/手机上点着看，选好告诉我字母，正式版会去掉这行）</span>
+</div>
+
+<div class="card">
+<table><tr>
+<td style="text-align:left; width:55%;"><h1 id="todayTitle">今天</h1><p class="sub" id="todaySub"></p></td>
+<td style="text-align:right; width:45%;"><div class="temp" id="tempBig">--°</div><div class="sub" id="tempSub"></div></td>
+</tr></table>
+</div>
+
+<div class="card">
+<h2 style="font-size:20px; margin:0 0 8px 0;">未来 3 天</h2>
+<div id="forecast"></div>
+</div>
+
+<div class="card">
+<h2 style="font-size:20px; margin:0 0 8px 0;">本月</h2>
+<p><button onclick="changeMonth(-1)">上月</button> <button onclick="changeMonth(1)">下月</button> <button onclick="showCurrentMonth()">回本月</button></p>
+<div id="calendar"></div>
+</div>
+
+<div class="card">
+<div id="weather" style="font-size:20px; line-height:1.6;"></div>
+<p class="note">天气城市：<span id="cityName"></span> ｜ 来源 Open-Meteo，免费、无需密钥</p>
+<p><input id="cityInput" type="text" placeholder="例如：北京 / Los Angeles"> <button onclick="searchCity()">换城市</button></p>
+<p class="note" id="kindleLink"></p>
+<p><button onclick="location.reload()">刷新</button></p>
+</div>
+
+<script>
+var weekNames = ["星期日","星期一","星期二","星期三","星期四","星期五","星期六"];
+var params = {};
+(function(){
+  var q = window.location.search.substring(1).split("&");
+  for (var i = 0; i < q.length; i++) {
+    var p = q[i].split("=");
+    if (p[0]) params[decodeURIComponent(p[0])] = decodeURIComponent(p[1] || "");
+  }
+})();
+var theme = params.theme || localStorage.getItem("kw_theme") || "board";
+var lat = params.lat || localStorage.getItem("kw_lat") || "39.90";
+var lon = params.lon || localStorage.getItem("kw_lon") || "116.40";
+var city = params.name || localStorage.getItem("kw_city") || "北京";
+var calYear, calMonth;
+function beijingNow(){
+  var n = new Date();
+  return new Date(n.getTime() + (n.getTimezoneOffset() + 480) * 60000);
+}
+function setTheme(t){
+  theme = t;
+  document.body.className = "theme-" + t;
+  try { localStorage.setItem("kw_theme", t); } catch(e){}
+  var ids = ["apple","board","minimal"];
+  for (var i = 0; i < ids.length; i++) {
+    document.getElementById("btn-" + ids[i]).className = (ids[i] === t ? "on" : "");
+  }
+}
+function codeText(c){
+  if (c === 0) return "晴";
+  if (c === 1 || c === 2) return "多云";
+  if (c === 3) return "阴";
+  if (c === 45 || c === 48) return "雾";
+  if (c === 51 || c === 53 || c === 55) return "毛毛雨";
+  if (c === 61 || c === 63 || c === 65) return "雨";
+  if (c === 66 || c === 67) return "冻雨";
+  if (c === 71 || c === 73 || c === 75) return "雪";
+  if (c === 80 || c === 81 || c === 82) return "阵雨";
+  if (c === 85 || c === 86) return "阵雪";
+  if (c === 95) return "雷阵雨";
+  if (c === 96 || c === 99) return "冰雹雷阵雨";
+  return "天气代码 " + c;
+}
+function renderToday(){
+  var now = beijingNow();
+  document.getElementById("todayTitle").innerHTML = (now.getMonth()+1) + "月" + now.getDate() + "日";
+  document.getElementById("todaySub").innerHTML = now.getFullYear() + "年 " + weekNames[now.getDay()];
+  calYear = now.getFullYear(); calMonth = now.getMonth();
+  renderCalendar();
+}
+function renderCalendar(){
+  var now = beijingNow();
+  var days = new Date(calYear, calMonth+1, 0).getDate();
+  var start = new Date(calYear, calMonth, 1).getDay();
+  var html = "<p style='font-size:22px;'>" + calYear + "年" + (calMonth+1) + "月</p><table><tr><th>日</th><th>一</th><th>二</th><th>三</th><th>四</th><th>五</th><th>六</th></tr><tr>";
+  for (var i = 0; i < start; i++) html += "<td></td>";
+  for (var d = 1; d <= days; d++) {
+    var isToday = (calYear === now.getFullYear() && calMonth === now.getMonth() && d === now.getDate());
+    html += isToday ? "<td class='today'>" + d + "</td>" : "<td>" + d + "</td>";
+    if ((start + d) % 7 === 0 && d !== days) html += "</tr><tr>";
+  }
+  html += "</tr></table>";
+  document.getElementById("calendar").innerHTML = html;
+}
+function changeMonth(n){
+  calMonth += n;
+  if (calMonth < 0) { calMonth = 11; calYear--; }
+  if (calMonth > 11) { calMonth = 0; calYear++; }
+  renderCalendar();
+}
+function showCurrentMonth(){
+  var now = beijingNow(); calYear = now.getFullYear(); calMonth = now.getMonth(); renderCalendar();
+}
+function get(url, cb){
+  var x = new XMLHttpRequest();
+  x.onreadystatechange = function(){
+    if (x.readyState === 4) {
+      if (x.status === 200) { try { cb(null, JSON.parse(x.responseText)); } catch(e){ cb(e); } }
+      else { cb(new Error("HTTP " + x.status)); }
+    }
+  };
+  x.open("GET", url, true);
+  x.send();
+}
+function loadWeather(){
+  document.getElementById("cityName").innerHTML = city;
+  var base = window.location.protocol + "//" + window.location.host + window.location.pathname;
+  document.getElementById("kindleLink").innerHTML = "Kindle 用这个链接（已含城市和主题）：<br>" + base + "?theme=" + theme + "&lat=" + lat + "&lon=" + lon + "&name=" + encodeURIComponent(city);
+  var url = "https://api.open-meteo.com/v1/forecast?latitude=" + lat + "&longitude=" + lon + "&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=auto&forecast_days=4";
+  get(url, function(err, data){
+    if (err || !data || !data.current) {
+      document.getElementById("weather").innerHTML = "天气暂时加载不出来，请点刷新再试一次。日历不受影响。";
+      return;
+    }
+    var cur = data.current;
+    document.getElementById("tempBig").innerHTML = Math.round(cur.temperature_2m) + "°";
+    document.getElementById("tempSub").innerHTML = codeText(cur.weather_code) + " " + data.daily.temperature_2m_min[0] + "~" + data.daily.temperature_2m_max[0] + "°";
+    document.getElementById("weather").innerHTML = "体感 " + cur.apparent_temperature + "°C，湿度 " + cur.relative_humidity_2m + "%，风速 " + cur.wind_speed_10m + " km/h";
+    var f = "";
+    for (var i = 1; i < data.daily.time.length; i++) {
+      var dt = new Date(data.daily.time[i] + "T12:00:00");
+      f += "<div class='day'>" + (dt.getMonth()+1) + "月" + dt.getDate() + "日 " + weekNames[dt.getDay()] + "：" + codeText(data.daily.weather_code[i]) + "，" + data.daily.temperature_2m_min[i] + "° ~ " + data.daily.temperature_2m_max[i] + "°" + (data.daily.precipitation_probability_max[i] !== null ? "，降水 " + data.daily.precipitation_probability_max[i] + "%" : "") + "</div>";
+    }
+    document.getElementById("forecast").innerHTML = f;
+  });
+}
+function searchCity(){
+  var name = document.getElementById("cityInput").value;
+  if (!name) return;
+  get("https://geocoding-api.open-meteo.com/v1/search?name=" + encodeURIComponent(name) + "&count=1&language=zh", function(err, data){
+    if (err || !data || !data.results || !data.results.length) { alert("没找到这个城市，换个名字再试"); return; }
+    var r = data.results[0];
+    lat = r.latitude; lon = r.longitude; city = r.name;
+    try { localStorage.setItem("kw_lat", lat); localStorage.setItem("kw_lon", lon); localStorage.setItem("kw_city", city); } catch(e){}
+    loadWeather();
+  });
+}
+setTheme(theme);
+renderToday();
+loadWeather();
+</script>
+</body>
+</html>
