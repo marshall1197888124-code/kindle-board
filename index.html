@@ -5,16 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Kindle 日历天气</title>
 <style>
-body{margin:0; padding:16px; font-family:serif, sans-serif; color:#000; background:#fff;}
-.switcher{font-size:16px; margin-bottom:16px; padding-bottom:12px; border-bottom:1px solid #999;}
-.switcher button{font-size:16px; padding:6px 10px; margin-right:6px; background:#fff; border:1px solid #000;}
-.switcher button.on{background:#000; color:#fff;}
+body{margin:0; padding:16px; font-family:serif, sans-serif; color:#000; background:#fff; overflow-x:hidden;}
 h1{margin:0;}
 .sub{margin:4px 0 16px 0;}
-table{width:100%; border-collapse:collapse; text-align:center;}
+table{width:100%; border-collapse:collapse; text-align:center; table-layout:fixed;}
+td{overflow:hidden;}
 /* ---- A: Apple ---- */
 body.theme-apple{background:#f5f5f7; font-family:-apple-system, "PingFang SC", "Helvetica Neue", Arial, sans-serif;}
-.theme-apple .card{background:#fff; border-radius:20px; padding:20px; margin-bottom:14px;}
+.theme-apple .card{background:#fff; border-radius:20px; padding:20px; margin-bottom:14px; box-sizing:border-box;}
 .theme-apple h1{font-size:52px; font-weight:700; letter-spacing:-1px;}
 .theme-apple .sub{font-size:20px; color:#86868b;}
 .theme-apple .temp{font-size:64px; font-weight:300; text-align:right;}
@@ -89,9 +87,9 @@ var params = {};
   }
 })();
 var theme = "apple";
-var lat = params.lat || localStorage.getItem("kw_lat") || "39.90";
-var lon = params.lon || localStorage.getItem("kw_lon") || "116.40";
-var city = params.name || localStorage.getItem("kw_city") || "北京";
+var lat = params.lat || "39.90";
+var lon = params.lon || "116.40";
+var city = params.name || "北京";
 var calYear, calMonth;
 function beijingNow(){
   var n = new Date();
@@ -100,11 +98,6 @@ function beijingNow(){
 function setTheme(t){
   theme = t;
   document.body.className = "theme-" + t;
-  try { localStorage.setItem("kw_theme", t); } catch(e){}
-  var ids = ["apple","board","minimal"];
-  for (var i = 0; i < ids.length; i++) {
-    document.getElementById("btn-" + ids[i]).className = (ids[i] === t ? "on" : "");
-  }
 }
 function codeText(c){
   if (c === 0) return "晴";
@@ -193,7 +186,6 @@ function searchCity(){
     if (err || !data || !data.results || !data.results.length) { alert("没找到这个城市，换个名字再试"); return; }
     var r = data.results[0];
     lat = r.latitude; lon = r.longitude; city = r.name;
-    try { localStorage.setItem("kw_lat", lat); localStorage.setItem("kw_lon", lon); localStorage.setItem("kw_city", city); } catch(e){}
     loadWeather();
   });
 }
