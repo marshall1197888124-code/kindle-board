@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Kindle 日历天气 - 三个方案</title>
+<title>Kindle 日历天气</title>
 <style>
 body{margin:0; padding:16px; font-family:serif, sans-serif; color:#000; background:#fff;}
 .switcher{font-size:16px; margin-bottom:16px; padding-bottom:12px; border-bottom:1px solid #999;}
@@ -50,14 +50,7 @@ input{font-size:19px; padding:8px; width:55%;}
 button{font-size:19px; padding:8px 12px; background:#fff; border:1px solid #000;}
 </style>
 </head>
-<body class="theme-board">
-<div class="switcher">
-方案：
-<button id="btn-apple" onclick="setTheme('apple')">A 苹果风</button>
-<button id="btn-board" onclick="setTheme('board')">B 看板风</button>
-<button id="btn-minimal" onclick="setTheme('minimal')">C 极简风</button>
-<span>（在电脑/手机上点着看，选好告诉我字母，正式版会去掉这行）</span>
-</div>
+<body class="theme-apple">
 
 <div class="card">
 <table><tr>
@@ -95,7 +88,7 @@ var params = {};
     if (p[0]) params[decodeURIComponent(p[0])] = decodeURIComponent(p[1] || "");
   }
 })();
-var theme = params.theme || localStorage.getItem("kw_theme") || "board";
+var theme = "apple";
 var lat = params.lat || localStorage.getItem("kw_lat") || "39.90";
 var lon = params.lon || localStorage.getItem("kw_lon") || "116.40";
 var city = params.name || localStorage.getItem("kw_city") || "北京";
@@ -185,8 +178,10 @@ function loadWeather(){
     document.getElementById("weather").innerHTML = "体感 " + cur.apparent_temperature + "°C，湿度 " + cur.relative_humidity_2m + "%，风速 " + cur.wind_speed_10m + " km/h";
     var f = "";
     for (var i = 1; i < data.daily.time.length; i++) {
-      var dt = new Date(data.daily.time[i] + "T12:00:00");
-      f += "<div class='day'>" + (dt.getMonth()+1) + "月" + dt.getDate() + "日 " + weekNames[dt.getDay()] + "：" + codeText(data.daily.weather_code[i]) + "，" + data.daily.temperature_2m_min[i] + "° ~ " + data.daily.temperature_2m_max[i] + "°" + (data.daily.precipitation_probability_max[i] !== null ? "，降水 " + data.daily.precipitation_probability_max[i] + "%" : "") + "</div>";
+      var parts = data.daily.time[i].split("-");
+      var fy = parseInt(parts[0], 10), fm = parseInt(parts[1], 10), fd = parseInt(parts[2], 10);
+      var fwd = new Date(Date.UTC(fy, fm - 1, fd)).getUTCDay();
+      f += "<div class='day'>" + fy + "年" + fm + "月" + fd + "日 " + weekNames[fwd] + "：" + codeText(data.daily.weather_code[i]) + "，" + data.daily.temperature_2m_min[i] + "° ~ " + data.daily.temperature_2m_max[i] + "°" + (data.daily.precipitation_probability_max[i] !== null ? "，降水 " + data.daily.precipitation_probability_max[i] + "%" : "") + "</div>";
     }
     document.getElementById("forecast").innerHTML = f;
   });
